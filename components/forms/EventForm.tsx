@@ -1,7 +1,7 @@
 'use client';
 import { eventFormSchema } from '@/schema/events';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,24 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
+} from '@/components/ui/field';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupText,
   InputGroupTextarea,
-} from "@/components/ui/input-group"
+} from '@/components/ui/input-group';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../ui/alert-dialog';
 
 interface EventFormProps {
   event?: {
@@ -50,5 +61,7 @@ export default function EventForm({ event }: EventFormProps) {
         },
   });
 
+  return (
   
+  );
 }
