@@ -4,22 +4,22 @@ import { eventFormSchema } from '@/schema/events';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/drizzle/db';
 import { EventTable } from '@/drizzle/schema';
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { and, eq } from 'drizzle-orm';
+import { redirect } from 'next/navigation';
 
 
 export async function createEvent(
   unsafeData: z.infer<typeof eventFormSchema>,
-): Promise<void> {
+): Promise<{error?:boolean}|undefined> {
   try {
     const { userId } = await auth();
     const { success, data } = eventFormSchema.safeParse(unsafeData);
     if (!success || !userId) {
-      throw new Error('Invalid event data or user not found.');
+      return {error:true};
     }
 
-    db.insert(EventTable).values({
+    await db.insert(EventTable).values({
       ...data,
       clerkUserId: userId,
     });
@@ -28,8 +28,7 @@ export async function createEvent(
       error.message || 'An error occurred while creating the event.',
     );
   }finally{
-    revalidatePath('/events')
-    redirect('/events')
+    redirect('/events');
   }
 }
 
@@ -63,9 +62,8 @@ export async function updateEvent(
     } catch (error: any) {
       // If any error occurs, throw a new error with a readable message
       throw new Error(`Failed to update event: ${error.message || error}`)
-    } finally {
-      // Revalidate the '/events' path to ensure the page fetches fresh data after the database operation
-      revalidatePath('/events')
+    }finally{
+     redirect('/events');
     }
 
 
@@ -98,9 +96,8 @@ export async function updateEvent(
       } catch (error: any) {
         // If any error occurs, throw a new error with a readable message
         throw new Error(`Failed to delete event: ${error.message || error}`)
-      } finally {
-        // Revalidate the '/events' path to ensure the page fetches fresh data after the database operation
-        revalidatePath('/events')
+      }finally{
+        redirect('/events');
       }
     }
 

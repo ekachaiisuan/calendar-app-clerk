@@ -1,12 +1,11 @@
 'use client';
 import { eventFormSchema } from '@/schema/events';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { useForm } from 'react-hook-form';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useTransition } from 'react';
 import * as z from 'zod';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,23 +19,31 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
-import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
-import { createEvent, updateEvent } from '@/server/actions/events';
+import { createEvent, deleteEvent, updateEvent } from '@/server/actions/events';
 
 interface EventFormProps {
   event?: {
     id: string;
     name: string;
-    description: string;
+    description?: string ;
     durationInMinutes: number;
     isActive: boolean;
   };
 }
 export default function EventForm({ event }: EventFormProps) {
   const router = useRouter();
-  const [isDeletePending, setIsDeletePending] = useState(false);
+  const [isDeletePending, startDeleteTransition] = useTransition()
 
   const form = useForm<z.infer<typeof eventFormSchema>>({
     resolver: zodResolver(eventFormSchema),
@@ -53,19 +60,18 @@ export default function EventForm({ event }: EventFormProps) {
   });
 
   // Handle form submission
-    async function onSubmit(values: z.infer<typeof eventFormSchema>) {
-        const action =  event == null ? createEvent : updateEvent.bind(null, event.id)
-        try {
-            await action(values)
-            router.push('/events')
-
-        } catch (error: any) {
-            // Handle any error that occurs during the action (e.g., network error)
-          form.setError("root", {
-            message: `There was an error saving your event ${error.message}`,
-          })
-        }
-    }
+  async function onSubmit(values: z.infer<typeof eventFormSchema>) {
+    const action =
+      event == null ? createEvent : updateEvent.bind(null, event.id);
+   
+      const data = await action(values);
+      if (data?.error) {
+        form.setError('root', {
+          message: 'There was an error saving your event',
+        });
+      }
+      
+  }
 
   return (
     <Form {...form}>
@@ -106,7 +112,7 @@ export default function EventForm({ event }: EventFormProps) {
             <FormItem>
               <FormLabel>Duration</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input type="number" {...field} onChange={(e) => field.onChange(e.target.valueAsNumber)} />
               </FormControl>
               <FormDescription>In minutes</FormDescription>
               <FormMessage />
@@ -182,7 +188,19 @@ export default function EventForm({ event }: EventFormProps) {
                     className="bg-red-500 hover:bg-red-700 cursor-pointer"
                     disabled={isDeletePending || form.formState.isSubmitting}
                     onClick={() => {
-                      setIsDeletePending(true) 
+                      // Start a React transition to keep the UI responsive during this async operation
+                      startDeleteTransition(async () => {
+                        try {
+                          // Attempt to delete the event by its ID
+                          await deleteEvent(event.id);
+                          //router.push('/events');
+                        } catch (error: any) {
+                          // If something goes wrong, show an error at the root level of the form
+                          form.setError('root', {
+                            message: `There was an error deleting your event: ${error.message}`,
+                          });
+                        }
+                      });
                     }}
                   >
                     Delete
